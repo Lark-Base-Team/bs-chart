@@ -58,6 +58,7 @@ export default function Home() {
             <Form.Select
               field="chart.order"
               label={t("chart-conf-order")}
+              placeholder={t("chart-conf-" + conf.chart.order)}
               optionList={[
                 { label: t("chart-conf-default"), value: "default" },
                 { label: t("chart-conf-asc"), value: "asc" },
@@ -76,6 +77,7 @@ export default function Home() {
             <Form.Select
               field="chart.order"
               label={t("chart-conf-order")}
+              placeholder={t("chart-conf-" + conf.chart.order)}
               optionList={[
                 { label: t("chart-conf-default"), value: "default" },
                 { label: t("chart-conf-asc"), value: "asc" },
@@ -94,10 +96,12 @@ export default function Home() {
           <>
             <Form.InputNumber
               field="chart.max"
+              placeholder={conf.chart.max}
               label={t("chart-conf-max")}
             ></Form.InputNumber>
             <Form.InputNumber
               field="chart.min"
+              placeholder={conf.chart.min}
               label={t("chart-conf-min")}
             ></Form.InputNumber>
           </>
@@ -124,50 +128,72 @@ export default function Home() {
     });
   }, []);
 
-  const onSubmit = useCallback(async (conf: any) => {
-    console.log(
-      conf,
-      echartRef
-      // downloadFile(base64ToFile(url, Date.now() + ".png", "image/png"))
-    );
-    if (Object.keys(conf?.select || {}).length === 0)
-      return Toast.error(t("toast-select-number-field"));
-    let load = Toast.info({
-      icon: <Spin />,
-      content: `${t("toast-gening")}...`,
-      duration: 0,
-    });
-    let recordId = "";
-    if (conf.output.type !== "multiToField") {
-      const select = await bsSdk.getSelection();
-      console.log({ select });
+  const onSubmit = useCallback(
+    async (nconf: any) => {
+      console.log(
+        nconf,
+        echartRef
+        // downloadFile(base64ToFile(url, Date.now() + ".png", "image/png"))
+      );
+      nconf = mergeDeep(conf, nconf);
+      if (Object.keys(nconf?.select || {}).length === 0)
+        return Toast.error(t("toast-select-number-field"));
+      let load = Toast.info({
+        icon: <Spin />,
+        content: `${t("toast-gening")}...`,
+        duration: 0,
+      });
+      let recordId = "";
+      if (nconf.output.type !== "multiToField") {
+        const select = await bsSdk.getSelection();
+        console.log({ select });
 
-      if (select.recordId) {
-        recordId = select.recordId as string;
-      } else {
-        if (conf?.output?.type === "preview") {
-          recordId = await (await bsSdk.getActiveTable())
-            .getRecords({ pageSize: 1 })
-            .then((res) => res.records[0].recordId);
+        if (select.recordId) {
+          recordId = select.recordId as string;
+        } else {
+          if (nconf?.output?.type === "preview") {
+            recordId = await (await bsSdk.getActiveTable())
+              .getRecords({ pageSize: 1 })
+              .then((res) => res.records[0].recordId);
+          }
         }
       }
-    }
-    console.log({ recordId });
+      console.log({ recordId });
 
-    if (conf.output.type === "multiToField") {
-      const recordIds = await bsSdk.getRecordIds();
-      if (!recordIds.length) return Toast.error(t("toast-add-record"));
-      for (let i = 0; i < recordIds.length; i++) {
-        Toast.close(load);
-        load = Toast.info({
-          icon: <Spin />,
-          content: `${t("toast-gening")}(${i + 1}/${recordIds.length})...`,
-          duration: 0,
-        });
-        const recordId = recordIds[i];
+      if (nconf.output.type === "multiToField") {
+        const recordIds = await bsSdk.getRecordIds();
+        if (!recordIds.length) return Toast.error(t("toast-add-record"));
+        for (let i = 0; i < recordIds.length; i++) {
+          Toast.close(load);
+          load = Toast.info({
+            icon: <Spin />,
+            content: `${t("toast-gening")}(${i + 1}/${recordIds.length})...`,
+            duration: 0,
+          });
+          const recordId = recordIds[i];
+          const url = await gene(recordId);
+          if (!url) continue;
+          const outfield = orm.getFieldsMap().get(nconf.output.field);
+          if ((await outfield?.getType()) !== FieldType.Attachment) {
+            Toast.close(load);
+            return Toast.error(t("toast-select-field"));
+          }
+          outfield?.setValue(recordId, [
+            await fileToIOpenAttachment(
+              bsSdk.base,
+              base64ToFile(url, Date.now() + ".png", "image/png")
+            ),
+          ]);
+        }
+      } else if (nconf.output.type === "toField") {
+        if (!recordId) {
+          Toast.close(load);
+          return Toast.error(t("toast-select-record"));
+        }
+
         const url = await gene(recordId);
-        if (!url) continue;
-        const outfield = orm.getFieldsMap().get(conf.output.field);
+
+        const outfield = orm.getFieldsMap().get(nconf.output.field);
         if ((await outfield?.getType()) !== FieldType.Attachment) {
           Toast.close(load);
           return Toast.error(t("toast-select-field"));
@@ -178,67 +204,51 @@ export default function Home() {
             base64ToFile(url, Date.now() + ".png", "image/png")
           ),
         ]);
+      } else {
+        if (!recordId) {
+          Toast.close(load);
+          return Toast.error(t("toast-select-record"));
+        }
+        await gene(recordId);
       }
-    } else if (conf.output.type === "toField") {
-      if (!recordId) {
-        Toast.close(load);
-        return Toast.error(t("toast-select-record"));
+      Toast.close(load);
+      Toast.success(t("toast-gene-success"));
+
+      async function gene(recordId: string) {
+        const record = await orm.getRecord(recordId);
+        const selectFieldRecord = nconf.select.reduce(
+          (map: any, fieldId: string) => {
+            let v = toDisplay(record[fieldId]);
+            if (!v) {
+              v = 0;
+            }
+            v = Number(v);
+            // console.log("select", v, fieldId, record[fieldId]);
+
+            if (typeof v === "number" && v === v) {
+              map[orm.getFieldsMap()?.get(fieldId)?.name as string] = v;
+            }
+            return map;
+          },
+          {}
+        );
+
+        if (Object.keys(selectFieldRecord).length === 0) {
+          return;
+        }
+
+        setOption(
+          createOption(nconf.chartType, selectFieldRecord, nconf?.chart)
+        );
+        console.log(record, selectFieldRecord);
+
+        await new Promise((resolve) => setTimeout(resolve, 1));
+        const url = (echartRef.current as any)?.getDataURL();
+        return url;
       }
-
-      const url = await gene(recordId);
-
-      const outfield = orm.getFieldsMap().get(conf.output.field);
-      if ((await outfield?.getType()) !== FieldType.Attachment) {
-        Toast.close(load);
-        return Toast.error(t("toast-select-field"));
-      }
-      outfield?.setValue(recordId, [
-        await fileToIOpenAttachment(
-          bsSdk.base,
-          base64ToFile(url, Date.now() + ".png", "image/png")
-        ),
-      ]);
-    } else {
-      if (!recordId) {
-        Toast.close(load);
-        return Toast.error(t("toast-select-record"));
-      }
-      await gene(recordId);
-    }
-    Toast.close(load);
-    Toast.success(t("toast-gene-success"));
-
-    async function gene(recordId: string) {
-      const record = await orm.getRecord(recordId);
-      const selectFieldRecord = conf.select.reduce(
-        (map: any, fieldId: string) => {
-          let v = toDisplay(record[fieldId]);
-          if (!v) {
-            v = 0;
-          }
-          v = Number(v);
-          // console.log("select", v, fieldId, record[fieldId]);
-
-          if (typeof v === "number" && v === v) {
-            map[orm.getFieldsMap()?.get(fieldId)?.name as string] = v;
-          }
-          return map;
-        },
-        {}
-      );
-
-      if (Object.keys(selectFieldRecord).length === 0) {
-        return;
-      }
-
-      setOption(createOption(conf.chartType, selectFieldRecord, conf?.chart));
-      console.log(record, selectFieldRecord);
-
-      await new Promise((resolve) => setTimeout(resolve, 1));
-      const url = (echartRef.current as any)?.getDataURL();
-      return url;
-    }
-  }, []);
+    },
+    [conf, t]
+  );
 
   const onChange = useCallback(
     (e: any) => {
