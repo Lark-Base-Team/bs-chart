@@ -27,19 +27,87 @@ export default function Home() {
   const [t, i18n] = useTranslation();
   const [option, setOption] = useState<any>(
     createOption(
+      "line",
       {
         A: 10,
         B: 10,
         C: 10,
       },
-      { max: 10, min: 0 }
+      { max: 10, min: 0, order: "default" }
     )
   );
   const echartRef = useRef();
   const [conf, setConf] = useKeepState<any>({
     output: { type: "preview" },
-    chart: { max: 10, min: 0 },
+    chartType: "line",
+    chart: { max: 10, min: 0, order: "default" },
   });
+
+  const setConfValue = useCallback(
+    (value: any) => {
+      setConf(Object.assign({}, mergeDeep(conf, value)));
+    },
+    [conf, setConf]
+  );
+
+  const uiConf = () => {
+    const map: any = {
+      get bar() {
+        return (
+          <>
+            <Form.Select
+              initValue={"default"}
+              field="chart.order"
+              label={t("chart-conf-order")}
+              optionList={[
+                { label: t("chart-conf-default"), value: "default" },
+                { label: t("chart-conf-asc"), value: "asc" },
+                {
+                  label: t("chart-conf-desc"),
+                  value: "desc",
+                },
+              ]}
+            ></Form.Select>
+          </>
+        );
+      },
+      get line() {
+        return (
+          <>
+            <Form.Select
+              field="chart.order"
+              label={t("chart-conf-order")}
+              optionList={[
+                { label: t("chart-conf-default"), value: "default" },
+                { label: t("chart-conf-asc"), value: "asc" },
+                {
+                  label: t("chart-conf-desc"),
+                  value: "desc",
+                },
+              ]}
+            ></Form.Select>
+          </>
+        );
+      },
+
+      get radar() {
+        return (
+          <>
+            <Form.InputNumber
+              field="chart.max"
+              label={t("chart-conf-max")}
+            ></Form.InputNumber>
+            <Form.InputNumber
+              field="chart.min"
+              label={t("chart-conf-min")}
+            ></Form.InputNumber>
+          </>
+        );
+      },
+    };
+
+    return map[conf.chartType] || null;
+  };
 
   // console.log(conf);
 
@@ -164,7 +232,7 @@ export default function Home() {
         return;
       }
 
-      setOption(createOption(selectFieldRecord, conf?.chart));
+      setOption(createOption(conf.chartType, selectFieldRecord, conf?.chart));
       console.log(record, selectFieldRecord);
 
       await new Promise((resolve) => setTimeout(resolve, 1));
@@ -177,13 +245,142 @@ export default function Home() {
     (e: any) => {
       // console.log("onChange", e);
 
-      setConf({
-        ...e.values,
-        output: Object.assign({}, conf?.output, e.values?.output),
-      });
+      setConfValue(e.values);
     },
-    [conf, setConf]
+    [setConfValue]
   );
+
+  function createOption(chartType: string, data: any, opt: any) {
+    let keys = Object.keys(data);
+    const maxKeyLen = Math.max(...keys.map((key) => key.length));
+    if (opt.order === "asc" || opt.order === "desc") {
+      keys = extractAndSortNumbers(keys);
+      if (opt.order === "desc") {
+        keys = keys.reverse();
+      }
+    }
+    return (
+      (
+        {
+          get line() {
+            return {
+              wrapStyle: {
+                width: `${(keys.length ?? 0) * 100 + 100}px`,
+                height: `500px`,
+              },
+              animation: false,
+              xAxis: {
+                type: "category",
+                data: keys,
+              },
+              yAxis: {
+                type: "value",
+              },
+              series: [
+                {
+                  data: keys.map((key) => data[key]),
+                  type: "line",
+                },
+              ],
+            };
+          },
+          get bar() {
+            return {
+              wrapStyle: {
+                width: `${(keys.length ?? 0) * 100 + 100}px`,
+                height: `500px`,
+              },
+
+              animation: false,
+              xAxis: {
+                type: "category",
+                data: keys,
+              },
+              yAxis: {
+                type: "value",
+              },
+              series: [
+                {
+                  data: keys.map((key) => data[key]),
+                  type: "bar",
+                },
+              ],
+            };
+          },
+          get radar() {
+            return {
+              wrapStyle: {
+                width: `500px`,
+                height: `500px`,
+              },
+
+              animation: false,
+              // title: {
+              //   text: "Basic Radar Chart",
+              // },
+              // legend: {
+              //   data: ["Allocated Budget", "Actual Spending"],
+              // },
+              textStyle: {
+                fontSize: 16,
+              },
+              radar: {
+                // shape: 'circle',
+                // indicator: [
+                //   { name: "Sales" },
+                //   { name: "Administration" },
+                //   { name: "Information Technology" },
+                //   { name: "Customer Support" },
+                //   { name: "Development" },
+                //   { name: "Marketing" },
+                // ],
+                indicator: keys.map((key) => ({
+                  name: key,
+                  max: opt.max,
+                  min: opt.min,
+                  // key.length > 6
+                  //   ? key.slice(0, 6) + "\n" + key.slice(6, key.length)
+                  //   : key,
+                })),
+                axisName: {
+                  color: "#5470c6",
+                },
+                center: ["50%", "50%"], // 将雷达图居中显示
+                radius: maxKeyLen > 5 ? "50%" : maxKeyLen > 4 ? "60%" : "70%", // 设置雷达图的半径为容器高度的70%
+              },
+              series: [
+                {
+                  name: "Budget vs spending",
+                  type: "radar",
+                  data: [
+                    {
+                      value: keys.map((key) => data[key]),
+                      areaStyle: {
+                        color: "rgba(66, 139, 212, 0.3)",
+                      },
+                      label: {
+                        show: true,
+                        position: "inside",
+                      },
+                      // name: "Allocated Budget",
+                    },
+                    // {
+                    //   value: [4200, 3000, 20000, 35000, 50000, 18000],
+                    //   name: "Allocated Budget",
+                    // },
+                    // {
+                    //   value: [5000, 14000, 28000, 26000, 42000, 21000],
+                    //   name: "Actual Spending",
+                    // },
+                  ],
+                },
+              ],
+            };
+          },
+        } as any
+      )[chartType] || {}
+    );
+  }
 
   return (
     <main className={styles.main}>
@@ -206,14 +403,21 @@ export default function Home() {
           ></BSelectField>
         </Section>
         <Section text={t("chart-conf")} style={{ marginTop: "10px" }}>
-          <Form.InputNumber
-            field="chart.max"
-            label={t("chart-conf-max")}
-          ></Form.InputNumber>
-          <Form.InputNumber
-            field="chart.min"
-            label={t("chart-conf-min")}
-          ></Form.InputNumber>
+          <Form.Select
+            field="chartType"
+            label={t("chart-conf-type")}
+            optionList={[
+              { label: t("chart-conf-line"), value: "line" },
+              { label: t("chart-conf-bar"), value: "bar" },
+              { label: t("chart-conf-radar"), value: "radar" },
+            ]}
+            onChange={(v: any) => {
+              console.log(v);
+              setConfValue({ chartType: v });
+              // setOption(createOption(v, , opt))
+            }}
+          ></Form.Select>
+          {uiConf()}
         </Section>
         <Section text={t("output-conf")} style={{ marginTop: "10px" }}>
           <Form.Select field="output.type" label={t("output-type")}>
@@ -248,6 +452,7 @@ export default function Home() {
             {t("btn-gene")}
           </Button>
           <Button
+            type="secondary"
             block
             onClick={() => open("https://zhuanlan.zhihu.com/p/669107200")}
           >
@@ -255,81 +460,13 @@ export default function Home() {
           </Button>
         </Space>
         <div style={{ width: "100%", overflow: "scroll" }}>
-          <div style={{ width: "500px", height: "500px" }}>
+          <div style={option.wrapStyle}>
             <ECharts refInstance={echartRef} option={option}></ECharts>
           </div>
         </div>
       </BProvide>
     </main>
   );
-}
-
-function createOption(params: any, opt: any) {
-  const keys = Object.keys(params);
-  const maxKeyLen = Math.max(...keys.map((key) => key.length));
-  return {
-    animation: false,
-    // title: {
-    //   text: "Basic Radar Chart",
-    // },
-    // legend: {
-    //   data: ["Allocated Budget", "Actual Spending"],
-    // },
-    textStyle: {
-      fontSize: 16,
-    },
-    radar: {
-      // shape: 'circle',
-      // indicator: [
-      //   { name: "Sales" },
-      //   { name: "Administration" },
-      //   { name: "Information Technology" },
-      //   { name: "Customer Support" },
-      //   { name: "Development" },
-      //   { name: "Marketing" },
-      // ],
-      indicator: keys.map((key) => ({
-        name: key,
-        max: opt.max,
-        min: opt.min,
-        // key.length > 6
-        //   ? key.slice(0, 6) + "\n" + key.slice(6, key.length)
-        //   : key,
-      })),
-      axisName: {
-        color: "#5470c6",
-      },
-      center: ["50%", "50%"], // 将雷达图居中显示
-      radius: maxKeyLen > 5 ? "50%" : maxKeyLen > 4 ? "60%" : "70%", // 设置雷达图的半径为容器高度的70%
-    },
-    series: [
-      {
-        name: "Budget vs spending",
-        type: "radar",
-        data: [
-          {
-            value: keys.map((key) => params[key]),
-            areaStyle: {
-              color: "rgba(66, 139, 212, 0.3)",
-            },
-            label: {
-              show: true,
-              position: "inside",
-            },
-            // name: "Allocated Budget",
-          },
-          // {
-          //   value: [4200, 3000, 20000, 35000, 50000, 18000],
-          //   name: "Allocated Budget",
-          // },
-          // {
-          //   value: [5000, 14000, 28000, 26000, 42000, 21000],
-          //   name: "Actual Spending",
-          // },
-        ],
-      },
-    ],
-  };
 }
 
 function toDisplay(cell: any) {
@@ -340,4 +477,92 @@ function toDisplay(cell: any) {
           .filter((item: any) => item)
           .join(",")
     : cell;
+}
+
+function extractAndSortNumbers(strings: any[]) {
+  // 定义中文数字映射
+  const chineseNumberMap: any = {
+    零: 0,
+    一: 1,
+    二: 2,
+    三: 3,
+    四: 4,
+    五: 5,
+    六: 6,
+    七: 7,
+    八: 8,
+    九: 9,
+    十: 10,
+    百: 100,
+    千: 1000,
+    万: 10000,
+    亿: 100000000,
+  };
+
+  // 中文数字转阿拉伯数字
+  function chineseToNumber(chineseStr: string) {
+    let total = 0;
+    let temp = 0;
+    let prevUnit = 1;
+
+    for (const char of chineseStr.split("")) {
+      let value = chineseNumberMap[char];
+      if (value < 10) {
+        temp = value;
+      } else {
+        if (temp === 0) temp = 1;
+        if (value > prevUnit) {
+          total += temp;
+          total *= value;
+          temp = 0;
+        } else {
+          total += temp * value;
+        }
+        prevUnit = value;
+        temp = 0;
+      }
+    }
+    return total + temp;
+  }
+
+  // 提取数字并映射为数字值的函数
+  function extractNumber(str: string) {
+    const numberPattern = /(\d+|[零一二三四五六七八九十百千万亿]+)/g;
+    const matches = str.match(numberPattern);
+    if (!matches) return 0;
+
+    return matches.reduce((sum: number, match: string) => {
+      return (
+        sum + (isNaN(Number(match)) ? chineseToNumber(match) : Number(match))
+      );
+    }, 0);
+  }
+
+  // 排序函数，将包含数字的词进行排序
+  function sortWithNumbers(a: any, b: any) {
+    const numA = extractNumber(a);
+    const numB = extractNumber(b);
+    return numA - numB;
+  }
+
+  // 使用排序函数对字符串数组进行排序
+  return strings.slice().sort(sortWithNumbers);
+}
+
+function mergeDeep(a: any, b: any) {
+  const keys = Object.keys(b);
+  const len = keys.length;
+  for (let i = 0; i < len; i++) {
+    const key = keys[i];
+    if (typeof b[key] === "object") {
+      if (typeof a[key] === "object") {
+        mergeDeep(a[key], b[key]);
+      } else {
+        a[key] = b[key];
+      }
+    } else {
+      a[key] = b[key];
+    }
+  }
+  return a;
 }
