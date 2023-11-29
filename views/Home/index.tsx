@@ -56,7 +56,6 @@ export default function Home() {
         return (
           <>
             <Form.Select
-              initValue={"default"}
               field="chart.order"
               label={t("chart-conf-order")}
               optionList={[
