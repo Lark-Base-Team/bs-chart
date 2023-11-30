@@ -29,5 +29,7 @@
   "chart-conf-default": "default",
   "chart-conf-desc": "descending order",
   "chart-conf-asc": "Ascending order",
-  "chart-conf-radar": "radar chart"
+  "chart-conf-radar": "radar chart",
+  "chart-conf-auto": "Adaptive",
+  "chart-conf-showValue": "Display value"
 }

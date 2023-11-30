@@ -25,23 +25,23 @@ const orm = new BsORM(bsSdk);
 
 export default function Home() {
   const [t, i18n] = useTranslation();
+  const echartRef = useRef();
+  const [conf, setConf] = useKeepState<any>({
+    output: { type: "preview" },
+    chartType: "line",
+    chart: { max: 10, min: 0, order: "default", auto: true, showValue: true },
+  });
   const [option, setOption] = useState<any>(
     createOption(
       "line",
       {
         A: 10,
-        B: 10,
+        B: 0,
         C: 10,
       },
-      { max: 10, min: 0, order: "default" }
+      conf?.chart
     )
   );
-  const echartRef = useRef();
-  const [conf, setConf] = useKeepState<any>({
-    output: { type: "preview" },
-    chartType: "line",
-    chart: { max: 10, min: 0, order: "default" },
-  });
 
   const setConfValue = useCallback(
     (value: any) => {
@@ -94,16 +94,33 @@ export default function Home() {
       get radar() {
         return (
           <>
-            <Form.InputNumber
-              field="chart.max"
-              placeholder={conf.chart.max}
-              label={t("chart-conf-max")}
-            ></Form.InputNumber>
-            <Form.InputNumber
-              field="chart.min"
-              placeholder={conf.chart.min}
-              label={t("chart-conf-min")}
-            ></Form.InputNumber>
+            <Form.Switch
+              field="chart.showValue"
+              label={t("chart-conf-showValue")}
+              defaultValue={conf.chart.showValue}
+              initValue={conf.chart.showValue}
+            ></Form.Switch>
+            <Form.Switch
+              field="chart.auto"
+              label={t("chart-conf-auto")}
+              defaultValue={conf.chart.auto}
+              initValue={conf.chart.auto}
+              onChange={(v) => setConfValue({ chart: { auto: v } })}
+            ></Form.Switch>
+            {!conf.chart?.auto && (
+              <>
+                <Form.InputNumber
+                  field="chart.max"
+                  placeholder={conf.chart.max}
+                  label={t("chart-conf-max")}
+                ></Form.InputNumber>
+                <Form.InputNumber
+                  field="chart.min"
+                  placeholder={conf.chart.min}
+                  label={t("chart-conf-min")}
+                ></Form.InputNumber>
+              </>
+            )}
           </>
         );
       },
@@ -260,7 +277,7 @@ export default function Home() {
     [setConfValue]
   );
 
-  function createOption(chartType: string, data: any, opt: any) {
+  function createOption(chartType: string, data: any, opt: any = {}) {
     let keys = Object.keys(data);
     const maxKeyLen = Math.max(...keys.map((key) => key.length));
     if (opt.order === "asc" || opt.order === "desc") {
@@ -268,6 +285,10 @@ export default function Home() {
       if (opt.order === "desc") {
         keys = keys.reverse();
       }
+    }
+    if (opt.auto && keys.length) {
+      opt.max = Math.max(...keys.map((key) => data[key]));
+      opt.min = 0;
     }
     return (
       (
@@ -369,7 +390,7 @@ export default function Home() {
                         color: "rgba(66, 139, 212, 0.3)",
                       },
                       label: {
-                        show: true,
+                        show: opt.showValue,
                         position: "inside",
                       },
                       // name: "Allocated Budget",

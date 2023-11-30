@@ -30,5 +30,7 @@
   "chart-conf-default": "默认",
   "chart-conf-asc": "升序",
   "chart-conf-desc": "降序",
-  "chart-conf-radar": "雷达图"
+  "chart-conf-radar": "雷达图",
+  "chart-conf-auto": "自适应",
+  "chart-conf-showValue": "显示值"
 }
