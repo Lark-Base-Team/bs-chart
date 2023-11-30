@@ -135,6 +135,7 @@ export default function Home() {
         echartRef
         // downloadFile(base64ToFile(url, Date.now() + ".png", "image/png"))
       );
+      conf.select = nconf.select;
       nconf = mergeDeep(conf, nconf);
       if (Object.keys(nconf?.select || {}).length === 0)
         return Toast.error(t("toast-select-number-field"));
