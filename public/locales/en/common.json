@@ -31,5 +31,6 @@
   "chart-conf-asc": "Ascending order",
   "chart-conf-radar": "radar chart",
   "chart-conf-auto": "Adaptive",
-  "chart-conf-showValue": "Display value"
+  "chart-conf-showValue": "Display value",
+  "chart-conf": "Chart configuration"
 }

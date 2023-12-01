@@ -339,6 +339,7 @@ export default function Home() {
             };
           },
           get radar() {
+            const maxVal = Math.max(...keys.map((key) => data[key]));
             return {
               wrapStyle: {
                 width: `500px`,
@@ -367,8 +368,9 @@ export default function Home() {
                 // ],
                 indicator: keys.map((key) => ({
                   name: key,
-                  max: opt.max,
+                  max: data[key] > opt.max ? data[key] : opt.max,
                   min: opt.min,
+                  color: data[key] > opt.max ? "red" : undefined,
                   // key.length > 6
                   //   ? key.slice(0, 6) + "\n" + key.slice(6, key.length)
                   //   : key,
