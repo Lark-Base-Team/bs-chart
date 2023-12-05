@@ -32,5 +32,6 @@
   "chart-conf-desc": "降序",
   "chart-conf-radar": "雷达图",
   "chart-conf-auto": "自适应",
-  "chart-conf-showValue": "显示值"
+  "chart-conf-showValue": "显示值",
+  "chart-conf-expr": "字段计算"
 }

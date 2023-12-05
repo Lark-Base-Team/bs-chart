@@ -13,7 +13,7 @@ export default function BSelectField(props: BSelectFieldProps) {
   const ctx = useContext(Context);
   const items = ctx.orm
     ?.getFields()
-    .filter(props.filterOption ?? ((val) => true))
+    ?.filter(props.filterOption ?? ((val) => true))
     .map((field: any) => (
       <Form.Select.Option key={field.id} value={field.id}>
         {field.name}
