@@ -53,16 +53,16 @@ export class BsORM {
 
   getFields() {
     const table = this.activeModel;
-    if (!table) throw new Error("table not found");
+    if (!table) return undefined;
     const model = this.models.get(table);
-    if (!model) throw new Error("table not found");
+    if (!model) return undefined;
     return model.fields as BIField[];
   }
 
   getFieldsMap() {
     const fields = this.getFields();
     const map = new Map<string, BIField>();
-    fields.forEach((field) => {
+    fields?.forEach((field) => {
       map.set(field.id, field);
     });
     return map;

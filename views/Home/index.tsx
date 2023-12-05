@@ -30,6 +30,8 @@ export default function Home() {
     output: { type: "preview" },
     chartType: "line",
     chart: { max: 10, min: 0, order: "default", auto: true, showValue: true },
+    format: true,
+    formatCode: {},
   });
   const [option, setOption] = useState<any>(
     createOption(
@@ -45,6 +47,7 @@ export default function Home() {
 
   const setConfValue = useCallback(
     (value: any) => {
+      conf.select = value.select;
       setConf(Object.assign({}, mergeDeep(conf, value)));
     },
     [conf, setConf]
@@ -154,6 +157,17 @@ export default function Home() {
       );
       conf.select = nconf.select;
       nconf = mergeDeep(conf, nconf);
+      if (nconf.chart.isExpr) {
+        nconf.chart.expr = nconf.chart.expr || {};
+        for (let i = 0; i < nconf.select.length; i++) {
+          const fieldId = nconf.select[i];
+          if (!nconf.chart.expr[fieldId]) {
+            nconf.chart.expr[fieldId] = "x";
+          }
+        }
+      } else {
+        nconf.chart.expr = {};
+      }
       if (Object.keys(nconf?.select || {}).length === 0)
         return Toast.error(t("toast-select-number-field"));
       let load = Toast.info({
@@ -244,7 +258,10 @@ export default function Home() {
             // console.log("select", v, fieldId, record[fieldId]);
 
             if (typeof v === "number" && v === v) {
-              map[orm.getFieldsMap()?.get(fieldId)?.name as string] = v;
+              map[orm.getFieldsMap()?.get(fieldId)?.name as string] = nconf
+                .chart?.expr?.[fieldId]
+                ? parseExpr(nconf.chart.expr[fieldId], { x: v }, () => v)
+                : v;
             }
             return map;
           },
@@ -271,7 +288,6 @@ export default function Home() {
   const onChange = useCallback(
     (e: any) => {
       // console.log("onChange", e);
-
       setConfValue(e.values);
     },
     [setConfValue]
@@ -450,6 +466,22 @@ export default function Home() {
               // setOption(createOption(v, , opt))
             }}
           ></Form.Select>
+          <Form.Switch
+            field="chart.isExpr"
+            label={t("chart-conf-expr")}
+            defaultValue={conf.chart.isExpr}
+            initValue={conf.chart.isExpr}
+            onChange={(v) => setConfValue({ chart: { isExpr: v } })}
+          ></Form.Switch>
+          {conf.chart?.isExpr &&
+            conf.select?.map((fieldId: string) => (
+              <Form.Input
+                key={fieldId}
+                field={`chart.expr.${fieldId}`}
+                label={orm.getFieldsMap()?.get(fieldId)?.name}
+                placeholder="x"
+              ></Form.Input>
+            ))}
           {uiConf()}
         </Section>
         <Section text={t("output-conf")} style={{ marginTop: "10px" }}>
@@ -598,4 +630,13 @@ function mergeDeep(a: any, b: any) {
     }
   }
   return a;
+}
+
+function parseExpr(expr: string, ctx: any, cb: any) {
+  // 运行expr
+  try {
+    return new Function("ctx", `with(ctx){return ${expr}}`)(ctx);
+  } catch (error) {
+    return cb();
+  }
 }
