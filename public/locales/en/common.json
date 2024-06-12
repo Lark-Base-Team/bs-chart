@@ -33,5 +33,7 @@
   "chart-conf-auto": "Adaptive",
   "chart-conf-showValue": "Display value",
   "chart-conf": "Chart configuration",
-  "chart-conf-expr": "Field calculation"
+  "chart-conf-expr": "Field calculation",
+  "label-field": "Select title display field",
+  "select-field-any-tip": "Select any field"
 }
