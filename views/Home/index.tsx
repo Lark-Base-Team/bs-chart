@@ -157,6 +157,7 @@ export default function Home() {
       );
       conf.select = nconf.select;
       nconf = mergeDeep(conf, nconf);
+
       if (nconf.chart.isExpr) {
         nconf.chart.expr = nconf.chart.expr || {};
         for (let i = 0; i < nconf.select.length; i++) {
@@ -273,9 +274,19 @@ export default function Home() {
         }
 
         setOption(
-          createOption(nconf.chartType, selectFieldRecord, nconf?.chart)
+          createOption(
+            nconf.chartType,
+            selectFieldRecord,
+            nconf?.chart,
+            toDisplay(record[nconf.selectLabel])
+          )
         );
-        console.log(record, selectFieldRecord);
+        console.log(
+          record,
+          selectFieldRecord,
+          nconf.selectLabel,
+          record[nconf.selectLabel]
+        );
 
         await new Promise((resolve) => setTimeout(resolve, 1));
         const url = (echartRef.current as any)?.getDataURL();
@@ -293,7 +304,14 @@ export default function Home() {
     [setConfValue]
   );
 
-  function createOption(chartType: string, data: any, opt: any = {}) {
+  function createOption(
+    chartType: string,
+    data: any,
+    opt: any = {},
+    label?: any
+  ) {
+    console.log("createOption", chartType, data, opt, label);
+
     let keys = Object.keys(data);
     const maxKeyLen = Math.max(...keys.map((key) => key.length));
     if (opt.order === "asc" || opt.order === "desc") {
@@ -362,13 +380,16 @@ export default function Home() {
                 height: `500px`,
               },
 
+              backgroundColor: "#fff",
+
               animation: false,
               // title: {
-              //   text: "Basic Radar Chart",
+              //   text: label,
+              //   textAlign: "center",
               // },
-              // legend: {
-              //   data: ["Allocated Budget", "Actual Spending"],
-              // },
+              legend: {
+                // data: ["Allocated Budget", "Actual Spending"],
+              },
               textStyle: {
                 fontSize: 16,
               },
@@ -411,7 +432,7 @@ export default function Home() {
                         show: opt.showValue,
                         position: "inside",
                       },
-                      // name: "Allocated Budget",
+                      name: label,
                     },
                     // {
                     //   value: [4200, 3000, 20000, 35000, 50000, 18000],
@@ -449,6 +470,18 @@ export default function Home() {
             label={t("select-field")}
             placeholder={t("select-field-tip")}
             multiple
+          ></BSelectField>
+          <BSelectField
+            field="selectLabel"
+            label={t("label-field")}
+            placeholder={t("select-field-any-tip")}
+            filterOption={(field) => field?.type !== FieldType.Number}
+            otherOptions={[
+              {
+                id: "none",
+                name: "不显示",
+              },
+            ]}
           ></BSelectField>
         </Section>
         <Section text={t("chart-conf")} style={{ marginTop: "10px" }}>
